@@ -17,8 +17,9 @@ pipeline {
         stage('Verify Workspace') {
             steps {
                 sh '''
-                  echo "Workspace content:"
+                  pwd
                   ls -l
+                  ls -l three-tier-app
                 '''
             }
         }
@@ -26,7 +27,7 @@ pipeline {
         stage('Build Frontend Image') {
             steps {
                 sh '''
-                  cd frontend
+                  cd three-tier-app/frontend
                   docker build -t $FRONTEND_IMAGE .
                 '''
             }
@@ -35,7 +36,7 @@ pipeline {
         stage('Build Backend Image') {
             steps {
                 sh '''
-                  cd backend
+                  cd three-tier-app/backend
                   docker build -t $BACKEND_IMAGE .
                 '''
             }
