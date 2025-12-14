@@ -1,0 +1,97 @@
+pipeline {
+    agent {
+        docker {
+            image 'docker:24.0.5'
+            args '-v /var/run/docker.sock:/var/run/docker.sock'
+        }
+    }
+
+    environment {
+        FRONTEND_IMAGE = "frontend-app:latest"
+        BACKEND_IMAGE  = "backend-app:latest"
+        DB_IMAGE       = "mysql:8.0"
+    }
+
+    stages {
+
+        stage('Checkout Code') {
+            steps {
+                echo "Cloning repository..."
+                git branch: 'main',
+                    url: 'https://github.com/your-repo/three-tier-app.git'
+            }
+        }
+
+        stage('Build Frontend Image') {
+            steps {
+                echo "Building Frontend Docker Image"
+                sh '''
+                  cd frontend
+                  docker build -t $FRONTEND_IMAGE .
+                '''
+            }
+        }
+
+        stage('Build Backend Image') {
+            steps {
+                echo "Building Backend Docker Image"
+                sh '''
+                  cd backend
+                  docker build -t $BACKEND_IMAGE .
+                '''
+            }
+        }
+
+        stage('Run Database Container') {
+            steps {
+                echo "Starting MySQL container"
+                sh '''
+                  docker rm -f mysql-db || true
+                  docker run -d \
+                    --name mysql-db \
+                    -e MYSQL_ROOT_PASSWORD=root \
+                    -e MYSQL_DATABASE=appdb \
+                    -p 3306:3306 \
+                    $DB_IMAGE
+                '''
+            }
+        }
+
+        stage('Run Backend Container') {
+            steps {
+                echo "Starting Backend container"
+                sh '''
+                  docker rm -f backend-app || true
+                  docker run -d \
+                    --name backend-app \
+                    --link mysql-db:mysql \
+                    -e DB_HOST=mysql \
+                    -p 8080:8080 \
+                    $BACKEND_IMAGE
+                '''
+            }
+        }
+
+        stage('Run Frontend Container') {
+            steps {
+                echo "Starting Frontend container"
+                sh '''
+                  docker rm -f frontend-app || true
+                  docker run -d \
+                    --name frontend-app \
+                    -p 80:80 \
+                    $FRONTEND_IMAGE
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "✅ 3-Tier Application deployed successfully using Docker agent"
+        }
+        failure {
+            echo "❌ Pipeline failed"
+        }
+    }
+}
