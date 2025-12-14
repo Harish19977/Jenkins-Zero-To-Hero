@@ -85,3 +85,19 @@ pipeline {
                   docker rm -f frontend-app || true
                   docker run -d \
                     --name frontend-app \
+                    -p 80:80 \
+                    "$FRONTEND_IMAGE"
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "✅ 3-tier application deployed successfully"
+        }
+        failure {
+            echo "❌ Pipeline failed"
+        }
+    }
+}
