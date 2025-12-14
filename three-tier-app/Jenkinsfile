@@ -10,15 +10,24 @@ pipeline {
         FRONTEND_IMAGE = "frontend-app:latest"
         BACKEND_IMAGE  = "backend-app:latest"
         DB_IMAGE       = "mysql:8.0"
+        DOCKER_CONFIG  = "${WORKSPACE}/.docker"
     }
 
     stages {
+
+        stage('Prepare Docker Config') {
+            steps {
+                sh '''
+                  mkdir -p $DOCKER_CONFIG
+                  chmod 777 $DOCKER_CONFIG
+                '''
+            }
+        }
 
         stage('Verify Workspace') {
             steps {
                 sh '''
                   pwd
-                  ls -l
                   ls -l three-tier-app
                 '''
             }
