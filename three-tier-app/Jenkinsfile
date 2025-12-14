@@ -14,10 +14,12 @@ pipeline {
 
     stages {
 
-        stage('Checkout Code') {
+        stage('Verify Workspace') {
             steps {
-                git url: 'https://github.com/Jenkins-Zero-To-Hero/three-tier-app',
-                    branch: 'main'
+                sh '''
+                  echo "Workspace content:"
+                  ls -l
+                '''
             }
         }
 
@@ -39,11 +41,12 @@ pipeline {
             }
         }
 
-        stage('Run MySQL') {
+        stage('Run Database') {
             steps {
                 sh '''
                   docker rm -f mysql-db || true
-                  docker run -d --name mysql-db \
+                  docker run -d \
+                    --name mysql-db \
                     -e MYSQL_ROOT_PASSWORD=root \
                     -e MYSQL_DATABASE=appdb \
                     -p 3306:3306 \
@@ -56,7 +59,8 @@ pipeline {
             steps {
                 sh '''
                   docker rm -f backend-app || true
-                  docker run -d --name backend-app \
+                  docker run -d \
+                    --name backend-app \
                     -p 8080:8080 \
                     $BACKEND_IMAGE
                 '''
@@ -67,7 +71,8 @@ pipeline {
             steps {
                 sh '''
                   docker rm -f frontend-app || true
-                  docker run -d --name frontend-app \
+                  docker run -d \
+                    --name frontend-app \
                     -p 80:80 \
                     $FRONTEND_IMAGE
                 '''
@@ -77,10 +82,10 @@ pipeline {
 
     post {
         success {
-            echo "✅ 3-Tier Application deployed successfully"
+            echo "✅ 3-tier application deployed successfully"
         }
         failure {
-            echo "❌ Deployment failed"
+            echo "❌ Pipeline failed"
         }
     }
 }
