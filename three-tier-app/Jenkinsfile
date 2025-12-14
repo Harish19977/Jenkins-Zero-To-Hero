@@ -2,7 +2,7 @@ pipeline {
     agent {
         docker {
             image 'docker:24.0.5'
-            args '-v /var/run/docker.sock:/var/run/docker.sock'
+            args '-u root:root -v /var/run/docker.sock:/var/run/docker.sock'
         }
     }
 
@@ -18,8 +18,9 @@ pipeline {
         stage('Prepare Docker Config') {
             steps {
                 sh '''
-                  mkdir -p $DOCKER_CONFIG
-                  chmod 777 $DOCKER_CONFIG
+                  export DOCKER_CONFIG="$WORKSPACE/.docker"
+                  mkdir -p "$DOCKER_CONFIG"
+                  chmod 777 "$DOCKER_CONFIG"
                 '''
             }
         }
@@ -28,6 +29,7 @@ pipeline {
             steps {
                 sh '''
                   pwd
+                  ls -l
                   ls -l three-tier-app
                 '''
             }
@@ -37,7 +39,7 @@ pipeline {
             steps {
                 sh '''
                   cd three-tier-app/frontend
-                  docker build -t $FRONTEND_IMAGE .
+                  docker build -t "$FRONTEND_IMAGE" .
                 '''
             }
         }
@@ -46,7 +48,7 @@ pipeline {
             steps {
                 sh '''
                   cd three-tier-app/backend
-                  docker build -t $BACKEND_IMAGE .
+                  docker build -t "$BACKEND_IMAGE" .
                 '''
             }
         }
@@ -60,7 +62,7 @@ pipeline {
                     -e MYSQL_ROOT_PASSWORD=root \
                     -e MYSQL_DATABASE=appdb \
                     -p 3306:3306 \
-                    $DB_IMAGE
+                    "$DB_IMAGE"
                 '''
             }
         }
@@ -72,7 +74,7 @@ pipeline {
                   docker run -d \
                     --name backend-app \
                     -p 8080:8080 \
-                    $BACKEND_IMAGE
+                    "$BACKEND_IMAGE"
                 '''
             }
         }
@@ -83,19 +85,3 @@ pipeline {
                   docker rm -f frontend-app || true
                   docker run -d \
                     --name frontend-app \
-                    -p 80:80 \
-                    $FRONTEND_IMAGE
-                '''
-            }
-        }
-    }
-
-    post {
-        success {
-            echo "✅ 3-tier application deployed successfully"
-        }
-        failure {
-            echo "❌ Pipeline failed"
-        }
-    }
-}
