@@ -1,36 +1,26 @@
 pipeline {
-    agent {
-        docker {
-            image 'docker:24.0.5'
-            args '-u root:root -v /var/run/docker.sock:/var/run/docker.sock'
-        }
-    }
+    agent any
 
     environment {
         FRONTEND_IMAGE = "frontend-app:latest"
         BACKEND_IMAGE  = "backend-app:latest"
         DB_IMAGE       = "mysql:8.0"
-        DOCKER_CONFIG  = "${WORKSPACE}/.docker"
+        NETWORK_NAME   = "three-tier-net"
     }
 
     stages {
 
-        stage('Prepare Docker Config') {
+        stage('Verify Docker') {
             steps {
-                sh '''
-                  export DOCKER_CONFIG="$WORKSPACE/.docker"
-                  mkdir -p "$DOCKER_CONFIG"
-                  chmod 777 "$DOCKER_CONFIG"
-                '''
+                sh 'docker version'
             }
         }
 
-        stage('Verify Workspace') {
+        stage('Create Network') {
             steps {
                 sh '''
-                  pwd
-                  ls -l
-                  ls -l three-tier-app
+                  docker network inspect $NETWORK_NAME >/dev/null 2>&1 || \
+                  docker network create $NETWORK_NAME
                 '''
             }
         }
@@ -39,7 +29,7 @@ pipeline {
             steps {
                 sh '''
                   cd three-tier-app/frontend
-                  docker build -t "$FRONTEND_IMAGE" .
+                  docker build -t $FRONTEND_IMAGE .
                 '''
             }
         }
@@ -48,7 +38,7 @@ pipeline {
             steps {
                 sh '''
                   cd three-tier-app/backend
-                  docker build -t "$BACKEND_IMAGE" .
+                  docker build -t $BACKEND_IMAGE .
                 '''
             }
         }
@@ -59,10 +49,10 @@ pipeline {
                   docker rm -f mysql-db || true
                   docker run -d \
                     --name mysql-db \
+                    --network $NETWORK_NAME \
                     -e MYSQL_ROOT_PASSWORD=root \
                     -e MYSQL_DATABASE=appdb \
-                    -p 3306:3306 \
-                    "$DB_IMAGE"
+                    mysql:8.0
                 '''
             }
         }
@@ -73,8 +63,9 @@ pipeline {
                   docker rm -f backend-app || true
                   docker run -d \
                     --name backend-app \
-                    -p 8080:8080 \
-                    "$BACKEND_IMAGE"
+                    --network $NETWORK_NAME \
+                    -p 8081:8080 \
+                    $BACKEND_IMAGE
                 '''
             }
         }
@@ -85,8 +76,9 @@ pipeline {
                   docker rm -f frontend-app || true
                   docker run -d \
                     --name frontend-app \
+                    --network $NETWORK_NAME \
                     -p 80:80 \
-                    "$FRONTEND_IMAGE"
+                    $FRONTEND_IMAGE
                 '''
             }
         }
@@ -94,10 +86,10 @@ pipeline {
 
     post {
         success {
-            echo "✅ 3-tier application deployed successfully"
+            echo "✅ 3-Tier Application Deployed Successfully"
         }
         failure {
-            echo "❌ Pipeline failed"
+            echo "❌ Pipeline Failed"
         }
     }
 }
