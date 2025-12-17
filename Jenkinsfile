@@ -2,8 +2,12 @@ pipeline {
     agent {
         docker {
             image 'docker:24.0.5'
-            args '--entrypoint="" -v /var/run/docker.sock:/var/run/docker.sock'
+            args '--entrypoint="" -u root -v /var/run/docker.sock:/var/run/docker.sock'
         }
+    }
+
+    environment {
+        DOCKER_CONFIG = "${WORKSPACE}/.docker"
     }
 
     stages {
@@ -18,6 +22,7 @@ pipeline {
             steps {
                 dir('hello-world') {
                     sh '''
+                    mkdir -p $DOCKER_CONFIG
                     docker build -t hello-java-app .
                     '''
                 }
@@ -35,7 +40,7 @@ pipeline {
 
     post {
         success {
-            echo "✅ Java Hello World executed successfully inside Docker"
+            echo "✅ Jenkins + Docker pipeline executed successfully"
         }
         failure {
             echo "❌ Pipeline failed"
