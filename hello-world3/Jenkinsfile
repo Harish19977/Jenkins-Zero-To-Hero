@@ -1,8 +1,8 @@
 pipeline {
     agent {
         docker {
-            image 'maven:3.9.6-eclipse-temurin-8'
-            args '-v /var/run/docker.sock:/var/run/docker.sock'
+            image 'docker:24.0.5'
+            args '--entrypoint="" -v /var/run/docker.sock:/var/run/docker.sock'
         }
     }
 
@@ -47,7 +47,7 @@ pipeline {
                 dir('hello-world3') {
                     sh '''
                     docker rm -f hello-world-container || true
-                    docker run --name hello-world-container $IMAGE_NAME:latest
+                    docker run -d --name hello-world-container $IMAGE_NAME:latest
                     '''
                 }
             }
