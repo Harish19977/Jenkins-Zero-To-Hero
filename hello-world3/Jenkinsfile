@@ -20,28 +20,36 @@ pipeline {
 
         stage('Build') {
             steps {
-                sh 'mvn clean package'
+                dir('hello-world3') {
+                    sh 'mvn clean package'
+                }
             }
         }
 
         stage('Test') {
             steps {
-                sh 'mvn test'
+                dir('hello-world3') {
+                    sh 'mvn test'
+                }
             }
         }
 
         stage('Docker Build') {
             steps {
-                sh 'docker build -t $IMAGE_NAME:latest .'
+                dir('hello-world3') {
+                    sh 'docker build -t $IMAGE_NAME:latest .'
+                }
             }
         }
 
         stage('Deploy') {
             steps {
-                sh '''
-                docker rm -f hello-world-container || true
-                docker run --name hello-world-container $IMAGE_NAME:latest
-                '''
+                dir('hello-world3') {
+                    sh '''
+                    docker rm -f hello-world-container || true
+                    docker run --name hello-world-container $IMAGE_NAME:latest
+                    '''
+                }
             }
         }
     }
