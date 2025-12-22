@@ -13,7 +13,7 @@ pipeline {
             }
         }
 
-        stage('Build') {
+        stage('Build & Test') {
             agent {
                 docker {
                     image 'maven:3.9.6-eclipse-temurin-8'
@@ -21,34 +21,12 @@ pipeline {
             }
             steps {
                 dir('hello-world3') {
-                    sh 'mvn clean package'
-                }
-            }
-        }
-
-        stage('Test') {
-            agent {
-                docker {
-                    image 'maven:3.9.6-eclipse-temurin-8'
-                }
-            }
-            steps {
-                dir('hello-world3') {
-                    sh 'mvn test'
+                    sh 'mvn clean test package'
                 }
             }
         }
 
         stage('Docker Build') {
-            agent {
-                docker {
-                    image 'docker:24.0.5'
-                    args '--entrypoint="" -v /var/run/docker.sock:/var/run/docker.sock'
-                }
-            }
-            environment {
-                DOCKER_CONFIG = "${WORKSPACE}/.docker"
-            }
             steps {
                 dir('hello-world3') {
                     sh 'docker build -t $IMAGE_NAME:latest .'
@@ -57,22 +35,11 @@ pipeline {
         }
 
         stage('Deploy') {
-            agent {
-                docker {
-                    image 'docker:24.0.5'
-                    args '--entrypoint="" -v /var/run/docker.sock:/var/run/docker.sock'
-                }
-            }
-            environment {
-                DOCKER_CONFIG = "${WORKSPACE}/.docker"
-            }
             steps {
-                dir('hello-world3') {
-                    sh '''
-                    docker rm -f hello-world-container || true
-                    docker run -d --name hello-world-container $IMAGE_NAME:latest
-                    '''
-                }
+                sh '''
+                docker rm -f hello-world || true
+                docker run -d --name hello-world hello-world-java:latest
+                '''
             }
         }
     }
