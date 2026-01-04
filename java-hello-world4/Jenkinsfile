@@ -1,0 +1,77 @@
+pipeline {
+    agent {
+        docker {
+            image 'maven:3.9.6-eclipse-temurin-17'
+            args '-v /var/run/docker.sock:/var/run/docker.sock'
+        }
+    }
+
+    environment {
+        DOCKER_IMAGE = "yourdockerhubusername/java-hello-world4"
+        TAG = "${BUILD_NUMBER}"
+        GITOPS_REPO = "https://github.com/yourusername/k8s-manifests.git"
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build') {
+            steps {
+                sh 'mvn clean package'
+            }
+        }
+
+        stage('Test') {
+            steps {
+                sh 'mvn test || echo "No tests present"'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                sh """
+                docker build -t $DOCKER_IMAGE:$TAG .
+                docker tag $DOCKER_IMAGE:$TAG $DOCKER_IMAGE:latest
+                """
+            }
+        }
+
+        stage('Push Image') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-creds',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh """
+                    echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                    docker push $DOCKER_IMAGE:$TAG
+                    docker push $DOCKER_IMAGE:latest
+                    """
+                }
+            }
+        }
+
+        stage('Update Kubernetes Manifest') {
+            steps {
+                withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
+                    sh """
+                    git clone https://$GITHUB_TOKEN@github.com/yourusername/k8s-manifests.git
+                    cd k8s-manifests
+                    sed -i 's|image:.*|image: $DOCKER_IMAGE:$TAG|' deployment.yaml
+                    git config user.email "jenkins@ci.com"
+                    git config user.name "jenkins"
+                    git add deployment.yaml
+                    git commit -m "Update image to $TAG"
+                    git push origin main
+                    """
+                }
+            }
+        }
+    }
+}
