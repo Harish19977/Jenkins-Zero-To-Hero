@@ -14,4 +14,4 @@ spec:
     spec:
       containers:
       - name: java-hello-world4
-        image: harish327/java-hello-world4:8
+        image: harish327/java-hello-world4:9
