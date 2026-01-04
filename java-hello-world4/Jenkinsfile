@@ -1,82 +1,78 @@
 pipeline {
-    agent {
+  agent any
+
+  environment {
+    IMAGE_NAME = "harish327/java-hello-world4"
+    IMAGE_TAG  = "${BUILD_NUMBER}"
+    GITOPS_REPO = "https://github.com/Harish19977/k8s-manifests.git"
+  }
+
+  stages {
+
+    stage('Checkout') {
+      steps {
+        checkout scm
+      }
+    }
+
+    stage('Build & Test (Maven Docker Agent)') {
+      agent {
         docker {
-            image 'maven:3.9.6-eclipse-temurin-17'
-            args '-v /var/run/docker.sock:/var/run/docker.sock'
+          image 'maven:3.9.6-eclipse-temurin-17'
+          args '-v /root/.m2:/root/.m2'
         }
+      }
+      steps {
+        dir('java-hello-world4') {
+          sh 'mvn clean package'
+          sh 'mvn test'
+        }
+      }
     }
 
-    environment {
-        DOCKER_IMAGE = "harish327/java-hello-world4"
-        TAG = "${BUILD_NUMBER}"
+    stage('Build Docker Image (Host Docker)') {
+      steps {
+        dir('java-hello-world4') {
+          sh """
+            docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
+          """
+        }
+      }
     }
 
-    stages {
-
-        stage('Checkout') {
-            steps {
-                checkout scm
-            }
+    stage('Push Docker Image') {
+      steps {
+        withCredentials([usernamePassword(
+          credentialsId: 'dockerhub-creds',
+          usernameVariable: 'DOCKER_USER',
+          passwordVariable: 'DOCKER_PASS'
+        )]) {
+          sh """
+            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+            docker push ${IMAGE_NAME}:${IMAGE_TAG}
+          """
         }
-
-        stage('Build') {
-            steps {
-                dir('java-hello-world4') {
-                    sh 'mvn clean package'
-                }
-            }
-        }
-
-        stage('Test') {
-            steps {
-                dir('java-hello-world4') {
-                    sh 'mvn test || echo "No tests"'
-                }
-            }
-        }
-
-        stage('Build Docker Image') {
-            steps {
-                dir('java-hello-world4') {
-                    sh """
-                    docker build -t $DOCKER_IMAGE:$TAG .
-                    docker tag $DOCKER_IMAGE:$TAG $DOCKER_IMAGE:latest
-                    """
-                }
-            }
-        }
-
-        stage('Push Image') {
-            steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'dockerhub-creds',
-                    usernameVariable: 'DOCKER_USER',
-                    passwordVariable: 'DOCKER_PASS'
-                )]) {
-                    sh """
-                    echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
-                    docker push $DOCKER_IMAGE:$TAG
-                    docker push $DOCKER_IMAGE:latest
-                    """
-                }
-            }
-        }
-
-        stage('Update Kubernetes Manifest') {
-            steps {
-                withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
-                    sh """
-                    git clone https://$GITHUB_TOKEN@github.com/Harish19977/k8s-manifests.git
-                    cd k8s-manifests
-                    sed -i 's|image:.*|image: $DOCKER_IMAGE:$TAG|' deployment.yaml
-                    git config user.email "jenkins@ci.com"
-                    git config user.name "jenkins"
-                    git add deployment.yaml
-                    git commit -m "Update image to $TAG"
-                    git push origin main
-                    """
-                }
-            }
-        }
+      }
     }
+
+    stage('Update Kubernetes Manifest (GitOps)') {
+      steps {
+        withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
+          sh '''
+            rm -rf k8s-manifests
+            git clone https://$GITHUB_TOKEN@github.com/Harish19977/k8s-manifests.git
+            cd k8s-manifests/java-hello-world4
+
+            sed -i "s|image: .*|image: harish327/java-hello-world4:${BUILD_NUMBER}|g" deployment.yaml
+
+            git config user.email "jenkins@local"
+            git config user.name "jenkins"
+            git add deployment.yaml
+            git commit -m "Update image to ${BUILD_NUMBER}"
+            git push origin main
+          '''
+        }
+      }
+    }
+  }
 }
