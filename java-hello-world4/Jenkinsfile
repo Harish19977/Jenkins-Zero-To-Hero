@@ -7,9 +7,9 @@ pipeline {
     }
 
     environment {
-        DOCKER_IMAGE = "yourdockerhubusername/java-hello-world4"
+        DOCKER_IMAGE = "harish327/java-hello-world4"
         TAG = "${BUILD_NUMBER}"
-        GITOPS_REPO = "https://github.com/yourusername/k8s-manifests.git"
+        GITOPS_REPO = "https://github.com/Jenkins-Zero-To-Hero/k8s-manifests"
     }
 
     stages {
@@ -61,7 +61,7 @@ pipeline {
             steps {
                 withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
                     sh """
-                    git clone https://$GITHUB_TOKEN@github.com/yourusername/k8s-manifests.git
+                    git clone https://$GITHUB_TOKEN@github.com/Jenkins-Zero-To-Hero/
                     cd k8s-manifests
                     sed -i 's|image:.*|image: $DOCKER_IMAGE:$TAG|' deployment.yaml
                     git config user.email "jenkins@ci.com"
