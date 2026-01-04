@@ -4,12 +4,12 @@ pipeline {
   environment {
     IMAGE_NAME = "harish327/java-hello-world4"
     IMAGE_TAG  = "${BUILD_NUMBER}"
-    GITOPS_REPO = "https://github.com/Harish19977/k8s-manifests.git"
+    REPO_URL   = "https://github.com/Harish19977/Jenkins-Zero-To-Hero.git"
   }
 
   stages {
 
-    stage('Checkout') {
+    stage('Checkout Source Code') {
       steps {
         checkout scm
       }
@@ -19,7 +19,7 @@ pipeline {
       agent {
         docker {
           image 'maven:3.9.6-eclipse-temurin-17'
-          args '-v /root/.m2:/root/.m2'
+          args '-v /var/lib/jenkins/.m2:/root/.m2'
         }
       }
       steps {
@@ -30,12 +30,12 @@ pipeline {
       }
     }
 
-    stage('Build Docker Image (Host Docker)') {
+    stage('Build Docker Image') {
       steps {
         dir('java-hello-world4') {
-          sh """
-            docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
-          """
+          sh '''
+            docker build -t harish327/java-hello-world4:${BUILD_NUMBER} .
+          '''
         }
       }
     }
@@ -47,10 +47,10 @@ pipeline {
           usernameVariable: 'DOCKER_USER',
           passwordVariable: 'DOCKER_PASS'
         )]) {
-          sh """
+          sh '''
             echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-            docker push ${IMAGE_NAME}:${IMAGE_TAG}
-          """
+            docker push harish327/java-hello-world4:${BUILD_NUMBER}
+          '''
         }
       }
     }
@@ -59,16 +59,18 @@ pipeline {
       steps {
         withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
           sh '''
-            rm -rf k8s-manifests
-            git clone https://$GITHUB_TOKEN@github.com/Harish19977/k8s-manifests.git
-            cd k8s-manifests/java-hello-world4
+            rm -rf Jenkins-Zero-To-Hero
+
+            git clone https://x-access-token:$GITHUB_TOKEN@github.com/Harish19977/Jenkins-Zero-To-Hero.git
+            cd Jenkins-Zero-To-Hero/k8s-manifests
 
             sed -i "s|image: .*|image: harish327/java-hello-world4:${BUILD_NUMBER}|g" deployment.yaml
 
             git config user.email "jenkins@local"
             git config user.name "jenkins"
+
             git add deployment.yaml
-            git commit -m "Update image to ${BUILD_NUMBER}"
+            git commit -m "chore: update image to ${BUILD_NUMBER}"
             git push origin main
           '''
         }
