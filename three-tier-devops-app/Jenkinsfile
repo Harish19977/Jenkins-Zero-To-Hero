@@ -1,0 +1,66 @@
+pipeline {
+  agent {
+    docker {
+      image 'docker:26.0'
+      args '-v /var/run/docker.sock:/var/run/docker.sock'
+    }
+  }
+
+  environment {
+    DOCKERHUB_USER = 'your_dockerhub_username'
+    BACKEND_IMAGE = "${DOCKERHUB_USER}/backend"
+    FRONTEND_IMAGE = "${DOCKERHUB_USER}/frontend"
+  }
+
+  stages {
+
+    stage('Checkout') {
+      steps {
+        checkout scm
+      }
+    }
+
+    stage('Build Backend Image') {
+      steps {
+        sh 'docker build -t $BACKEND_IMAGE:latest three-tier-devops-app/backend'
+      }
+    }
+
+    stage('Build Frontend Image') {
+      steps {
+        sh 'docker build -t $FRONTEND_IMAGE:latest three-tier-devops-app/frontend'
+      }
+    }
+
+    stage('DockerHub Login') {
+      steps {
+        withCredentials([usernamePassword(
+          credentialsId: 'dockerhub-creds',
+          usernameVariable: 'USER',
+          passwordVariable: 'PASS'
+        )]) {
+          sh 'echo $PASS | docker login -u $USER --password-stdin'
+        }
+      }
+    }
+
+    stage('Push Images') {
+      steps {
+        sh '''
+          docker push $BACKEND_IMAGE:latest
+          docker push $FRONTEND_IMAGE:latest
+        '''
+      }
+    }
+
+    stage('Deploy to Kubernetes') {
+      steps {
+        sh '''
+          kubectl apply -f three-tier-devops-app/k8s/mysql.yaml
+          kubectl apply -f three-tier-devops-app/k8s/backend.yaml
+          kubectl apply -f three-tier-devops-app/k8s/frontend.yaml
+        '''
+      }
+    }
+  }
+}
