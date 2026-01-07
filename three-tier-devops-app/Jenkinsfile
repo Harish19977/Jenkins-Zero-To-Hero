@@ -6,6 +6,8 @@ pipeline {
     BACKEND_IMAGE  = "${DOCKERHUB_USER}/backend"
     FRONTEND_IMAGE = "${DOCKERHUB_USER}/frontend"
     DOCKER_CONFIG  = "${WORKSPACE}/.docker"
+    DOCKER_CLIENT_TIMEOUT = '600'
+    COMPOSE_HTTP_TIMEOUT  = '600'
   }
 
   stages {
@@ -41,8 +43,6 @@ pipeline {
       }
       steps {
         sh '''
-          mkdir -p "$DOCKER_CONFIG"
-
           docker info
           docker build -t $BACKEND_IMAGE:latest three-tier-devops-app/backend
           docker build -t $FRONTEND_IMAGE:latest three-tier-devops-app/frontend
@@ -50,13 +50,9 @@ pipeline {
       }
     }
 
-    stage('DockerHub Login & Push') {
-      agent {
-        docker {
-          image 'docker:26.0'
-          args '-v /var/run/docker.sock:/var/run/docker.sock --user root'
-        }
-      }
+    /* 🔥 PUSH BACKEND (HOST DOCKER) */
+    stage('Push Backend Image') {
+      agent any
       steps {
         withCredentials([usernamePassword(
           credentialsId: 'dockerhub-creds',
@@ -64,8 +60,29 @@ pipeline {
           passwordVariable: 'DOCKER_PASS'
         )]) {
           sh '''
+            export DOCKER_CLIENT_TIMEOUT=600
+            export COMPOSE_HTTP_TIMEOUT=600
+
             echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
             docker push $BACKEND_IMAGE:latest
+          '''
+        }
+      }
+    }
+
+    /* 🔥 PUSH FRONTEND (HOST DOCKER) */
+    stage('Push Frontend Image') {
+      agent any
+      steps {
+        withCredentials([usernamePassword(
+          credentialsId: 'dockerhub-creds',
+          usernameVariable: 'DOCKER_USER',
+          passwordVariable: 'DOCKER_PASS'
+        )]) {
+          sh '''
+            export DOCKER_CLIENT_TIMEOUT=600
+            export COMPOSE_HTTP_TIMEOUT=600
+
             docker push $FRONTEND_IMAGE:latest
           '''
         }
