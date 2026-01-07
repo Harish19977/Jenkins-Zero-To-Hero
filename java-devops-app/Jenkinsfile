@@ -2,13 +2,14 @@ pipeline {
     agent {
         docker {
             image 'maven:3.9.6-eclipse-temurin-17'
-            args '-v /var/run/docker.sock:/var/run/docker.sock'
+            args '-v /var/run/docker.sock:/var/run/docker.sock --user root'
         }
     }
 
     environment {
-        DOCKER_IMAGE = "dockerhub_username/java-devops-app"
-        DOCKER_TAG   = "latest"
+        DOCKER_IMAGE  = "dockerhub_username/java-devops-app"
+        DOCKER_TAG    = "latest"
+        DOCKER_CONFIG = "${WORKSPACE}/.docker"
     }
 
     stages {
@@ -27,7 +28,10 @@ pipeline {
 
         stage('Docker Build') {
             steps {
-                sh 'docker build -t $DOCKER_IMAGE:$DOCKER_TAG .'
+                sh '''
+                  mkdir -p $DOCKER_CONFIG
+                  docker build -t $DOCKER_IMAGE:$DOCKER_TAG .
+                '''
             }
         }
 
