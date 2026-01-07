@@ -5,6 +5,14 @@
 
     <modelVersion>4.0.0</modelVersion>
 
+    <!-- ✅ Spring Boot Parent -->
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.2.1</version>
+        <relativePath/>
+    </parent>
+
     <groupId>com.example</groupId>
     <artifactId>backend</artifactId>
     <version>0.0.1-SNAPSHOT</version>
@@ -14,11 +22,9 @@
 
     <properties>
         <java.version>17</java.version>
-        <spring.boot.version>3.2.1</spring.boot.version>
     </properties>
 
     <dependencies>
-        <!-- Spring Boot Web -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
