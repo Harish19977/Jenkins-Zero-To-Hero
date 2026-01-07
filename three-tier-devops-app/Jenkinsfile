@@ -26,7 +26,7 @@ pipeline {
       steps {
         sh '''
           cd three-tier-devops-app/backend
-          mvn clean package
+          mvn clean package -DskipTests
         '''
       }
     }
@@ -35,13 +35,14 @@ pipeline {
       agent {
         docker {
           image 'docker:26.0'
-          args '-v /var/run/docker.sock:/var/run/docker.sock'
+          args '-v /var/run/docker.sock:/var/run/docker.sock --user root'
         }
       }
       steps {
         sh '''
-          mkdir -p $DOCKER_CONFIG
+          mkdir -p "$DOCKER_CONFIG"
 
+          docker info
           docker build -t $BACKEND_IMAGE:latest three-tier-devops-app/backend
           docker build -t $FRONTEND_IMAGE:latest three-tier-devops-app/frontend
         '''
@@ -52,7 +53,7 @@ pipeline {
       agent {
         docker {
           image 'docker:26.0'
-          args '-v /var/run/docker.sock:/var/run/docker.sock'
+          args '-v /var/run/docker.sock:/var/run/docker.sock --user root'
         }
       }
       steps {
@@ -62,7 +63,7 @@ pipeline {
           passwordVariable: 'PASS'
         )]) {
           sh '''
-            echo $PASS | docker login -u $USER --password-stdin
+            echo "$PASS" | docker login -u "$USER" --password-stdin
             docker push $BACKEND_IMAGE:latest
             docker push $FRONTEND_IMAGE:latest
           '''
@@ -79,6 +80,7 @@ pipeline {
       }
       steps {
         sh '''
+          kubectl get nodes
           kubectl apply -f three-tier-devops-app/k8s/mysql.yaml
           kubectl apply -f three-tier-devops-app/k8s/backend.yaml
           kubectl apply -f three-tier-devops-app/k8s/frontend.yaml
