@@ -2,10 +2,10 @@ pipeline {
   agent none
 
   environment {
-    DOCKERHUB_USER = 'your_dockerhub_username'
-    BACKEND_IMAGE = "${DOCKERHUB_USER}/backend"
+    DOCKERHUB_USER = 'harish327'
+    BACKEND_IMAGE  = "${DOCKERHUB_USER}/backend"
     FRONTEND_IMAGE = "${DOCKERHUB_USER}/frontend"
-    DOCKER_CONFIG = "${WORKSPACE}/.docker"
+    DOCKER_CONFIG  = "${WORKSPACE}/.docker"
   }
 
   stages {
@@ -21,6 +21,7 @@ pipeline {
       agent {
         docker {
           image 'maven:3.9.6-eclipse-temurin-17'
+          args '--user root'
         }
       }
       steps {
@@ -59,11 +60,11 @@ pipeline {
       steps {
         withCredentials([usernamePassword(
           credentialsId: 'dockerhub-creds',
-          usernameVariable: 'USER',
-          passwordVariable: 'PASS'
+          usernameVariable: 'DOCKER_USER',
+          passwordVariable: 'DOCKER_PASS'
         )]) {
           sh '''
-            echo "$PASS" | docker login -u "$USER" --password-stdin
+            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
             docker push $BACKEND_IMAGE:latest
             docker push $FRONTEND_IMAGE:latest
           '''
