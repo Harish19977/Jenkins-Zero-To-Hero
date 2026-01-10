@@ -15,11 +15,11 @@ spec:
         app: frontend
     spec:
       containers:
-      - name: frontend
-        image: <DOCKERHUB_USERNAME>/frontend:latest
-        imagePullPolicy: Always
-        ports:
-        - containerPort: 80
+        - name: frontend
+          image: harish327/frontend:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
 ---
 apiVersion: v1
 kind: Service
@@ -30,6 +30,7 @@ spec:
   selector:
     app: frontend
   ports:
-  - port: 80
-    targetPort: 80
-    nodePort: 30007
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+      nodePort: 30007
