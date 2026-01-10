@@ -81,18 +81,12 @@ pipeline {
     }
 
     stage('Deploy to Kubernetes') {
-      agent {
-        docker {
-          image 'bitnami/kubectl:latest'
-          args '''
-            --entrypoint=""
-            -v $HOME/.kube:/root/.kube
-          '''
-        }
-      }
+      agent any
       steps {
         sh '''
+          kubectl config use-context minikube
           kubectl get nodes
+
           kubectl apply -f three-tier-devops-app/k8s/mysql.yaml
           kubectl apply -f three-tier-devops-app/k8s/backend.yaml
           kubectl apply -f three-tier-devops-app/k8s/frontend.yaml
